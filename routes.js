@@ -1,18 +1,12 @@
+
 var express = require("express");
+var mongoose = require("mongoose");
+var Info = require("./models/Info");
+
 var router = express.Router();
-var clientSessions = require('client-sessions');
-var formidable = require('formidable');
-var fs = require('fs');
 
 router.get("/",function(request,response){
-	response.sendFile(__dirname + "/public/views/homepage.html");
-});
-
-router.get("/login",function(request,response){
-	response.sendFile(__dirname + "/public/views/login.html");
-});
-router.get("/signup",function(request,response){
-	response.sendFile(__dirname + "/public/views/signup.html");
+	response.sendFile(__dirname + "/public/views/index.html");
 });
 
 
@@ -21,110 +15,114 @@ const myDatabase = require('./myDatabase');
 
 let db = new myDatabase();
 
-var lev1 =[5,8,11,14,17];
-var lev2 =[2,4,6,8,10];
+//add or modify.  Use getAllObjects.
+router.get('/read', function(req, res){
+
+
+Info.find({},function(error,info) {
+	if (error) {
+		return res.json(null);
+	} else {
+		let objs = [];
+		for (let i=0;i<info.length;i++) {
+		  objs.push({ident:info[i].ident,name:info[i].name});
+		}
+		return res.json(objs);
+	}
+});
+
+//	let objs= db.getAllObjects();
+//	res.json(objs);
+});
+
+//add or modify.  Use getObjectWithID and change index to ident.
+router.get('/read/:ident', function(req, res){
+
+
+  Info.find({ident:req.params.ident},function(error,info) {
+      if (error) {
+          return res.json(null);
+      }
+      else if (info == null) {
+          return res.json(null);
+      }
+
+      if (info.length == 1)
+      {
+        res.json({ name: info[0].name });
+      }
+      else
+      {
+          return res.json(null);
+      }
+   });
+
+//	res.json(db.getObjectWithID(req.params.ident));
+
+});
 
 //add or modify.  Use addObject and no need for index.
 //                ident should be part of object.
-router.get("/userInfo",function(req,res){
-	if(!db.infoList[0]){
-		req.session_state.reset();
-		res.json({anything: "/login"})
-	} else{
-		console.log("Hey man iasd falsdfkja;ldfkja;sdflkja;dlfkj");
-		res.json({username:req.session_state.username, loginState:req.session_state.login});
-	}
-
-
-});
-var i = 0;
-var level1 = true
-var level2 = false
-
-router.post('/value', function(req, res){
-//console.log("d routes " + req.body.value);
-
-
-if(level1){
-	if(i < lev1.length)
-	{
-		console.log(req.body.value + "-value");
-		console.log(i);
-		//console.log(lev1[i] + "before");
-		if(req.body.value == lev1[i])
-		{
-		//	console.log(lev1[i] + "after");
-
-			console.log("matched" + req.body.value + " s "+ lev1[i]);
-			i++;
-			if(req.body.value == "17"){
-				level1 = false;
-				level2 = true;
-				i = 0;
-				console.log("returning");
-			}
-			return res.json(req.body.value);
-
-		}
-	}
-	// else{
-	// 	level1 = false;
-	// 	level2 = true;
-	// 	i = 0;
-	// 	console.log("returning");
-	// 	return res.json("done")
-	// }
-}
-///////////////////////
-else if(level2){
-	if(i < lev2.length)
-	{
-		console.log(req.body.value + "-value");
-		console.log(i);
-		if(req.body.value == lev2[i])
-		{
-
-			console.log("matched" + req.body.value + " s "+ lev2[i]);
-			i++;
-			return res.json(req.body.value);
-
-		}
-	}
-	else{
-		level2 = false;
-		level3 = true;
-	}
-}
-});
-
-router.get("/logout",function(req,res){
-	req.session_state.reset();
-	res.redirect('/');
-});
-router.post('/checklogin', function(req, res){
-	for(i=0;i<db.infoList.length;i++){
-		if(db.infoList[i].username == req.body.username && db.infoList[i].password == req.body.password){
-			console.log("Log in approved");
-			req.session_state.login = true;
-			req.session_state.username = req.body.username;
-			req.session_state.password = req.body.password;
-			return res.json({redirect:"/"});
-		}
-	}
-	return res.json(null);
-	///let obj = {name:req.body.name, password:req.body.password};
-	///res.json(db.addObject(obj));
-});
-router.post('/signup', function(req, res){
-	if (req.body.username == "") {
+router.post('/create', function(req, res){
+	if (req.body.name == "") {
 		res.json(null);
+		return;
 	}
-	let obj = {username:req.body.username, password:req.body.password};
-	req.session_state.login = true;
-	req.session_state.username = req.body.username;
-	req.session_state.password = req.body.password;
-	res.json(db.addObject(obj));
+
+    Info.create(req.body,function(error,info) {
+        if (error) {
+            return res.json(null);
+        }
+	  let obj = {ident:req.body.ident,name:req.body.name};
+        return res.json(obj);
+    });
+
+//	let obj = {ident:req.body.ident,name:req.body.name};
+//	res.json(db.addObject(obj));
+
+
 });
+
+//add or modify.  Use changeObject and no need for index.
+//                ident should be part of object.
+router.put('/update', function(req, res){
+	if (req.body.name == "") {
+		res.json(null);
+		return;
+	}
+
+Info.findOneAndUpdate({ident:req.body.ident},{name:req.body.name},function(error,info) {
+          if (error) {
+              return res.json(null);
+          }
+          else if (info == null) {
+              return res.json(null);
+          }
+          return res.json(req.body);
+      });
+
+
+
+
+
+//	let obj = {ident:req.body.ident,name:req.body.name};
+//	res.json(db.changeObject(obj));
+});
+
+//add or modify.  Use deleteObjectWithID and change index to ident.
+router.delete('/delete/:ident', function(req, res){
+
+    Info.remove({ident:req.params.ident},function(error,removed) {
+        if (error) {
+            return res.json(null);
+        }
+        return res.json(removed.result);
+    });
+
+//	res.json(db.deleteObjectWithID(req.params.ident));
+});
+
+
 
 
 module.exports = router;
